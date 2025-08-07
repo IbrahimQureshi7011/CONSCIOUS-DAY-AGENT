@@ -2,6 +2,8 @@ import streamlit as st
 import sqlite3
 from datetime import datetime
 from agent.core import generate_response
+import pytz
+import os
 
 # --- Database setup ---
 conn = sqlite3.connect("entries.db", check_same_thread=False)
@@ -73,6 +75,49 @@ elif selection == "VIEW ENTRIES":
             st.markdown(entry[7])
         else:
             st.warning("No entry found for this date.")
+
+    # --- LOG VIEWER BELOW ---
+    st.divider()
+    st.subheader("📂 View Logs by Date (from agent.log)")
+
+    LOG_FILE = "agent.log"
+
+    def convert_to_pakistan_time(utc_str):
+        try:
+            utc_dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S")
+            utc_dt = utc_dt.replace(tzinfo=pytz.UTC)
+            pakistan_dt = utc_dt.astimezone(pytz.timezone("Asia/Karachi"))
+            return pakistan_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            return utc_str  # fallback
+
+    # Load and group logs by date
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            log_lines = f.readlines()
+    else:
+        log_lines = []
+
+    log_dates = []
+    logs_by_date = {}
+
+    for line in log_lines:
+        parts = line.split(" - ")
+        if len(parts) >= 3:
+            timestamp = parts[0]
+            date_only = timestamp.split(" ")[0]
+            local_time = convert_to_pakistan_time(timestamp)
+            if date_only not in logs_by_date:
+                logs_by_date[date_only] = []
+                log_dates.append(date_only)
+            logs_by_date[date_only].append(f"{local_time} - {' - '.join(parts[1:])}")
+
+    if log_dates:
+        selected_log_date = st.selectbox("Select a log date", sorted(log_dates, reverse=True), key="log_select")
+        for log in logs_by_date[selected_log_date]:
+            st.text(log)
+    else:
+        st.info("No log file or entries found.")
 
 # --- ABOUT PAGE ---
 elif selection == "ABOUT":
