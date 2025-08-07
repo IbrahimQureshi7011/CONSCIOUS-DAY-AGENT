@@ -3,17 +3,31 @@ from langchain_core.runnables import RunnableSequence
 from langchain_community.chat_models import ChatOpenAI
 import logging
 import streamlit as st  
+from datetime import datetime
+import pytz  # added for timezone support
 
+# Setup logging with local timezone (Asia/Karachi)
+class PakistanTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        pakistan_tz = pytz.timezone("Asia/Karachi")
+        dt = datetime.fromtimestamp(record.created, pakistan_tz)
+        if datefmt:
+            return dt.strftime(datefmt)
+        else:
+            return dt.isoformat()
+
+formatter = PakistanTimeFormatter('%(asctime)s - %(levelname)s - %(message)s')
+
+file_handler = logging.FileHandler("agent.log")
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("agent.log"),
-        logging.StreamHandler()
-    ]
+    handlers=[file_handler, stream_handler]
 )
-
 
 template = """
 You are a daily reflection and planning assistant. Your goal is to:
