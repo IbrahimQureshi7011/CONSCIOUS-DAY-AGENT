@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 from datetime import datetime
+import pytz
 from agent.core import generate_response
 
 # --- Database setup ---
@@ -37,7 +38,8 @@ if selection == "MAIN":
         submitted = st.form_submit_button("Reflect & Plan")
 
     if submitted:
-        today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        pakistan_tz = pytz.timezone("Asia/Karachi")
+        today = datetime.now(pakistan_tz).strftime("%Y-%m-%d %H:%M:%S")
         result = generate_response(journal, intention, dream, priorities)
         reflection, strategy = result.get("reflection"), result.get("strategy")
 
@@ -59,13 +61,13 @@ elif selection == "VIEW ENTRIES":
     selected_date = st.date_input("Select a date")
     selected_str = selected_date.strftime("%Y-%m-%d")
 
-    # Fetch all full datetime entries for the selected date
+    # Fetch timestamps for selected date
     cursor.execute("SELECT date FROM entries WHERE date LIKE ? ORDER BY date DESC", (f"{selected_str}%",))
-    matches = cursor.fetchall()
-    time_options = [row[0] for row in matches]
+    time_matches = cursor.fetchall()
+    time_options = [row[0] for row in time_matches]
 
     if time_options:
-        selected_time = st.selectbox("Select a time", time_options)
+        selected_time = st.selectbox("🕒 Select time", time_options)
         cursor.execute("SELECT * FROM entries WHERE date = ?", (selected_time,))
         entry = cursor.fetchone()
 
@@ -96,5 +98,5 @@ elif selection == "ABOUT":
     - Align your energy with intentions and priorities  
     - Generate a practical daily plan  
 
-    Powered by **LangChain + OpenRouter AI + Streamlit**  
+    Powered by **LangChain + OpenRouter AI + Streamlit**
     """)
