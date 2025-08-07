@@ -2,8 +2,6 @@ import streamlit as st
 import sqlite3
 from datetime import datetime
 from agent.core import generate_response
-import pytz
-import os
 
 # --- Database setup ---
 conn = sqlite3.connect("entries.db", check_same_thread=False)
@@ -57,12 +55,21 @@ if selection == "MAIN":
 # --- VIEW ENTRIES PAGE ---
 elif selection == "VIEW ENTRIES":
     st.title("📅 View Past Entries")
-    cursor.execute("SELECT DISTINCT date FROM entries ORDER BY date DESC")
-    dates = [row[0] for row in cursor.fetchall()]
-    selected_date = st.selectbox("Select a date", [""] + dates)
 
-    if selected_date:
-        cursor.execute("SELECT * FROM entries WHERE date = ?", (selected_date,))
+    # Fetch all entry dates
+    cursor.execute("SELECT DISTINCT date FROM entries ORDER BY date DESC")
+    raw_dates = [row[0] for row in cursor.fetchall()]
+    formatted_dates = [d.split(" ")[0] for d in raw_dates]
+
+    selected_date = st.date_input("Select a date to view insights")
+
+    selected_str = selected_date.strftime("%Y-%m-%d")
+    matching_indexes = [i for i, d in enumerate(formatted_dates) if d == selected_str]
+
+    if matching_indexes:
+        match_index = matching_indexes[0]
+        full_date = raw_dates[match_index]
+        cursor.execute("SELECT * FROM entries WHERE date = ?", (full_date,))
         entry = cursor.fetchone()
         if entry:
             st.subheader("📝 Your Entry")
@@ -73,51 +80,8 @@ elif selection == "VIEW ENTRIES":
             st.subheader("📊 AI Insights")
             st.markdown(entry[6])
             st.markdown(entry[7])
-        else:
-            st.warning("No entry found for this date.")
-
-    # --- LOG VIEWER BELOW ---
-    st.divider()
-    st.subheader("📂 View Logs by Date (from agent.log)")
-
-    LOG_FILE = "agent.log"
-
-    def convert_to_pakistan_time(utc_str):
-        try:
-            utc_dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S")
-            utc_dt = utc_dt.replace(tzinfo=pytz.UTC)
-            pakistan_dt = utc_dt.astimezone(pytz.timezone("Asia/Karachi"))
-            return pakistan_dt.strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            return utc_str  # fallback
-
-    # Load and group logs by date
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "r", encoding="utf-8") as f:
-            log_lines = f.readlines()
     else:
-        log_lines = []
-
-    log_dates = []
-    logs_by_date = {}
-
-    for line in log_lines:
-        parts = line.split(" - ")
-        if len(parts) >= 3:
-            timestamp = parts[0]
-            date_only = timestamp.split(" ")[0]
-            local_time = convert_to_pakistan_time(timestamp)
-            if date_only not in logs_by_date:
-                logs_by_date[date_only] = []
-                log_dates.append(date_only)
-            logs_by_date[date_only].append(f"{local_time} - {' - '.join(parts[1:])}")
-
-    if log_dates:
-        selected_log_date = st.selectbox("Select a log date", sorted(log_dates, reverse=True), key="log_select")
-        for log in logs_by_date[selected_log_date]:
-            st.text(log)
-    else:
-        st.info("No log file or entries found.")
+        st.info("No entry found for the selected date.")
 
 # --- ABOUT PAGE ---
 elif selection == "ABOUT":
@@ -126,10 +90,10 @@ elif selection == "ABOUT":
     Welcome to **ConsciousDay Agent**! 
 
     This assistant helps you:
-    - Reflect on your daily journal and dreams
-    - Understand your mental and emotional patterns
-    - Align your energy with intentions and priorities
-    - Generate a practical daily plan
+    - Reflect on your daily journal and dreams  
+    - Understand your mental and emotional patterns  
+    - Align your energy with intentions and priorities  
+    - Generate a practical daily plan  
 
-    Powered by **LangChain + OpenRouter AI + Streamlit** 
+    Powered by **LangChain + OpenRouter AI + Streamlit**  
     """)
