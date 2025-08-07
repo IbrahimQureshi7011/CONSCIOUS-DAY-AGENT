@@ -4,30 +4,28 @@ from langchain_community.chat_models import ChatOpenAI
 import logging
 import streamlit as st  
 from datetime import datetime
-import pytz  # added for timezone support
+import pytz  
 
-# Setup logging with local timezone (Asia/Karachi)
-class PakistanTimeFormatter(logging.Formatter):
-    def formatTime(self, record, datefmt=None):
-        pakistan_tz = pytz.timezone("Asia/Karachi")
-        dt = datetime.fromtimestamp(record.created, pakistan_tz)
-        if datefmt:
-            return dt.strftime(datefmt)
-        else:
-            return dt.isoformat()
-
-formatter = PakistanTimeFormatter('%(asctime)s - %(levelname)s - %(message)s')
-
-file_handler = logging.FileHandler("agent.log")
-file_handler.setFormatter(formatter)
-
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
 
 logging.basicConfig(
     level=logging.INFO,
-    handlers=[file_handler, stream_handler]
+    handlers=[
+        logging.FileHandler("agent.log"),
+        logging.StreamHandler()
+    ]
 )
+
+# Custom log function with Pakistan time
+def log_with_local_time(message, level="info", data=None):
+    pakistan_tz = pytz.timezone("Asia/Karachi")
+    now = datetime.now(pakistan_tz).strftime("%Y-%m-%d %H:%M:%S")
+    full_message = f"{now} - {message}"
+    if data:
+        full_message += f": {data}"
+    if level == "info":
+        logging.info(full_message)
+    elif level == "error":
+        logging.error(full_message)
 
 template = """
 You are a daily reflection and planning assistant. Your goal is to:
@@ -58,7 +56,7 @@ llm = ChatOpenAI(
     base_url="https://openrouter.ai/api/v1"
 )
 
-# Create chain
+
 chain = prompt | llm
 
 # This function is used by app.py
@@ -70,15 +68,15 @@ def generate_response(journal, intention, dream, priorities):
         "priorities": priorities
     }
 
-    logging.info("Received user inputs")
-    logging.info(inputs)
+    log_with_local_time("Received user inputs")
+    log_with_local_time("Inputs", data=inputs)
 
     try:
         response = chain.invoke(inputs)
         text = response.content if hasattr(response, 'content') else response
-        logging.info("LLM Response:\n%s", text)
+        log_with_local_time("LLM Response", data=text)
     except Exception as e:
-        logging.error("Error generating response: %s", str(e))
+        log_with_local_time("Error generating response", level="error", data=str(e))
         raise e
 
     return {
