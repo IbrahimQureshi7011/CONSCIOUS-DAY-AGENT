@@ -2,9 +2,9 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_community.chat_models import ChatOpenAI
 import logging
-import os  # ✅ Only added this to use environment variable
+import streamlit as st  
 
-# Setup logging to file and terminal
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -14,7 +14,7 @@ logging.basicConfig(
     ]
 )
 
-# Define the prompt template
+
 template = """
 You are a daily reflection and planning assistant. Your goal is to:
 1. Reflect on the user's journal and dream input
@@ -38,10 +38,9 @@ OUTPUT:
 # Setup the prompt
 prompt = PromptTemplate.from_template(template)
 
-# ✅ Read OpenRouter API key securely from environment variable
 llm = ChatOpenAI(
     model="gpt-3.5-turbo",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+    api_key=st.secrets["OPENROUTER_API_KEY"],
     base_url="https://openrouter.ai/api/v1"
 )
 
