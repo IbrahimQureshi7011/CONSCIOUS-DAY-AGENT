@@ -56,23 +56,22 @@ if selection == "MAIN":
 elif selection == "VIEW ENTRIES":
     st.title("📅 View Past Entries")
 
-    # Fetch all entry dates
-    cursor.execute("SELECT DISTINCT date FROM entries ORDER BY date DESC")
-    raw_dates = [row[0] for row in cursor.fetchall()]
-    formatted_dates = [d.split(" ")[0] for d in raw_dates]
-
-    selected_date = st.date_input("Select a date to view insights")
-
+    selected_date = st.date_input("Select a date")
     selected_str = selected_date.strftime("%Y-%m-%d")
-    matching_indexes = [i for i, d in enumerate(formatted_dates) if d == selected_str]
 
-    if matching_indexes:
-        match_index = matching_indexes[0]
-        full_date = raw_dates[match_index]
-        cursor.execute("SELECT * FROM entries WHERE date = ?", (full_date,))
+    # Fetch all full datetime entries for the selected date
+    cursor.execute("SELECT date FROM entries WHERE date LIKE ? ORDER BY date DESC", (f"{selected_str}%",))
+    matches = cursor.fetchall()
+    time_options = [row[0] for row in matches]
+
+    if time_options:
+        selected_time = st.selectbox("Select a time", time_options)
+        cursor.execute("SELECT * FROM entries WHERE date = ?", (selected_time,))
         entry = cursor.fetchone()
+
         if entry:
             st.subheader("📝 Your Entry")
+            st.markdown(f"**Timestamp:** {entry[1]}")
             st.markdown(f"**Journal:** {entry[2]}")
             st.markdown(f"**Intention:** {entry[3]}")
             st.markdown(f"**Dream:** {entry[4]}")
@@ -80,8 +79,10 @@ elif selection == "VIEW ENTRIES":
             st.subheader("📊 AI Insights")
             st.markdown(entry[6])
             st.markdown(entry[7])
+        else:
+            st.warning("Entry not found.")
     else:
-        st.info("No entry found for the selected date.")
+        st.info("No entries for the selected date.")
 
 # --- ABOUT PAGE ---
 elif selection == "ABOUT":
